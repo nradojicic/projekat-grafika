@@ -299,10 +299,20 @@ int main() {
         ourShader.setMat4("view", view);
 
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+
+        // render the loaded model
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model,
+                               glm::vec3 (0,0,0)); // translate it down so it's at the center of the scene
+        model = glm::scale(model, glm::vec3(1,1,1));    // it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", model);
+        ourModel.Draw(ourShader);
+
         skyboxShader.use();
         view[3][0] = 0; // Postavljam x translaciju na nulu
         view[3][1] = 0; // Postavljam y translaciju na nulu
         view[3][2] = 0; // postavljam z translaciju na nulu
+        view[3][3] = 0;
         skyboxShader.setMat4("view", view);
         skyboxShader.setMat4("projection", projection);
 // skybox cube
@@ -313,18 +323,8 @@ int main() {
         glBindVertexArray(0);
         glDepthFunc(GL_LESS); // set depth function back to default
 
-        // render the loaded model
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model,
-                               glm::vec3 (programState->camera.Position)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1,1,1));    // it's a bit too big for our scene, so scale it down
-        ourShader.setMat4("model", model);
-        ourModel.Draw(ourShader);
-
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
-
-
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

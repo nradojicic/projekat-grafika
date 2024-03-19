@@ -163,15 +163,52 @@ int main() {
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
 
+    //blending
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    //face
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
+    glFrontFace(GL_CW);
+
     // build and compile shaders
     // -------------------------
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
     Shader shader("resources/shaders/cubemaps.vs", "resources/shaders/cubemaps.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
+    Shader blendingShader("resources/shaders/2.model_lighting.vs", "resources/shaders/blending.fs" );
     // load models
     // -----------
-    Model ourModel("resources/objects/sunce/Sun.obj");
+
+    Model ourModel("resources/objects/klupa3/uploads_files_793049_Bank-of-Wooden;OBJ;FBX/Bank-of-Wooden;OBJ;FBX/Bank_of_Wooden.obj");
     ourModel.SetShaderTextureNamePrefix("material.");
+
+    Model benchModel("resources/objects/klupa3/uploads_files_793049_Bank-of-Wooden;OBJ;FBX/Bank-of-Wooden;OBJ;FBX/Bank_of_Wooden.obj");
+    benchModel.SetShaderTextureNamePrefix("material.");
+
+    Model sunModel("resources/objects/sunce/Sun.obj");
+    sunModel.SetShaderTextureNamePrefix("material.");
+
+    stbi_set_flip_vertically_on_load(false);
+    Model treeModel("resources/objects/tree5/uploads_files_2418161_ItalianCypress/ItalianCypress.obj");
+    treeModel.SetShaderTextureNamePrefix("material.");
+    stbi_set_flip_vertically_on_load(true);
+
+    stbi_set_flip_vertically_on_load(false);
+    Model bushModel("resources/objects/bush/uploads_files_3211223_SimpleBushes/SimpleBushes/SimpleBush2.obj, resources/objects/bush/uploads_files_3211223_SimpleBushes/SimpleBushes/SimpleBush3.obj, resources/objects/bush/uploads_files_3211223_SimpleBushes/SimpleBushes/SimpleBush4.obj, resources/objects/bush/uploads_files_3211223_SimpleBushes/SimpleBushes/SimpleBush5.obj, resources/objects/bush/uploads_files_3211223_SimpleBushes/SimpleBushes/SimpleBush6.obj");
+    bushModel.SetShaderTextureNamePrefix("material.");
+    stbi_set_flip_vertically_on_load(true);
+
+    stbi_set_flip_vertically_on_load(false);
+    Model campFireModel("resources/objects/campfire6/fire/source/fireclean/fireclean.obj");
+    campFireModel.SetShaderTextureNamePrefix("material.");
+    stbi_set_flip_vertically_on_load(true);
+
+    stbi_set_flip_vertically_on_load(false);
+    Model grassModel("resources/objects/grass1/grass-05/source/grass 05/grass05.obj");
+    grassModel.SetShaderTextureNamePrefix("material.");
+    stbi_set_flip_vertically_on_load(true);
 
     float skyboxVertices[] = {
             // positions
@@ -221,12 +258,12 @@ int main() {
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
     pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
-    pointLight.diffuse = glm::vec3(0.6, 0.6, 0.6);
+    pointLight.diffuse = glm::vec3(1, 1, 1);
     pointLight.specular = glm::vec3(1.0, 1.0, 1.0);
 
     pointLight.constant = 1.0f;
-    pointLight.linear = 0.09f;
-    pointLight.quadratic = 0.032f;
+    pointLight.linear = 0.0f;
+    pointLight.quadratic = 0.0f;
 
     // skybox VAO
     unsigned int skyboxVAO, skyboxVBO;
@@ -240,12 +277,12 @@ int main() {
 
     vector<std::string> faces
             {
-                    FileSystem::getPath("resources/textures/skybox/Forest/posx.jpg"),
-                    FileSystem::getPath("resources/textures/skybox/Forest/negx.jpg"),
-                    FileSystem::getPath("resources/textures/skybox/Forest/negy.jpg"),
-                    FileSystem::getPath("resources/textures/skybox/Forest/posy.jpg"),
-                    FileSystem::getPath("resources/textures/skybox/Forest/posz.jpg"),
-                    FileSystem::getPath("resources/textures/skybox/Forest/negz.jpg")
+                    FileSystem::getPath("resources/textures/skybox/Park/posx.jpg"),
+                    FileSystem::getPath("resources/textures/skybox/Park/negx.jpg"),
+                    FileSystem::getPath("resources/textures/skybox/Park/negy.jpg"),
+                    FileSystem::getPath("resources/textures/skybox/Park/posy.jpg"),
+                    FileSystem::getPath("resources/textures/skybox/Park/posz.jpg"),
+                    FileSystem::getPath("resources/textures/skybox/Park/negz.jpg")
             };
     unsigned int cubemapTexture = loadCubemap(faces);
 
@@ -291,6 +328,7 @@ int main() {
         ourShader.setFloat("pointLight.quadratic", pointLight.quadratic);
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
+
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
                                                 (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
@@ -300,13 +338,93 @@ int main() {
 
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
 
-        // render the loaded model
+        // render the bench model
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model,
-                               glm::vec3 (0,0,0)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1,1,1));    // it's a bit too big for our scene, so scale it down
+                               glm::vec3 (50,-11,10)); // translate it down so it's at the center of the scene
+        model = glm::scale(model, glm::vec3(0.05,0.05,0.05));
+        model = glm::rotate(model, glm::radians(-45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model);
         ourModel.Draw(ourShader);
+        // render another bench model
+        glm::mat4 model0 = glm::mat4(1.0f);
+        model0 = glm::translate(model0,
+                               glm::vec3 (80,-10,32)); // translate it down so it's at the center of the scene
+        model0 = glm::scale(model0, glm::vec3(0.05,0.05,0.05));
+        model0 = glm::rotate(model0, glm::radians(-40.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        // it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", model0);
+        ourModel.Draw(ourShader);
+
+        // Model drveta koji renderujemo
+
+        glm::mat4 model1 = glm::mat4(1.0f);
+        model1 = glm::translate(model1,
+                                glm::vec3 (63,-10,17)); // translate it down so it's at the center of the scene
+        model1 = glm::scale(model1, glm::vec3(1,1,1));
+        model1 = glm::rotate(model1, glm::radians(-45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        // it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", model1);
+        treeModel.Draw(ourShader);
+
+        //Model logorske vatre koji renderujemo
+
+        glm::mat4 model3 = glm::mat4(1.0f);
+        model3 = glm::translate(model3,
+                                glm::vec3 (100,-15,27)); // translate it down so it's at the center of the scene
+        model3 = glm::scale(model3, glm::vec3(5,5,5));
+        model3 = glm::rotate(model3, glm::radians(13.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        model3 = glm::rotate(model3, glm::radians(-7.6f), glm::vec3(1.0f, 0.0f, 0.0f));
+        model3 = glm::rotate(model3, glm::radians(-10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        // it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", model3);
+        campFireModel.Draw(ourShader);
+        /*
+        glm::mat4 model4 = glm::mat4(1.0f);
+        model4 = glm::translate(model4,
+                                glm::vec3 (100,-15,27)); // translate it down so it's at the center of the scene
+        model4 = glm::scale(model4, glm::vec3(0.5,0.5,0.5));
+        model4 = glm::rotate(model4, glm::radians(13.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        model4 = glm::rotate(model4, glm::radians(-7.6f), glm::vec3(1.0f, 0.0f, 0.0f));
+        model4 = glm::rotate(model4, glm::radians(-10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+        // it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", model4);
+        */
+         //grassModel.Draw(ourShader);
+
+        // model zbuna
+
+        //glm::mat4 model5 = glm::mat4(1.0f);
+        //model5 = glm::translate(model5,
+          //                      glm::vec3 (100,-15,27)); // translate it down so it's at the center of the scene
+        //model5 = glm::scale(model5, glm::vec3(5,5,5));
+        //ourShader.setMat4("model", model5);
+        //bushModel.Draw(ourShader);
+
+        //blendovanje
+        blendingShader.use();
+        blendingShader.setVec3("viewPosition", programState->camera.Position);
+        blendingShader.setFloat("material.shininess", 32.0f);
+        blendingShader.setMat4("projection", projection);
+        blendingShader.setMat4("view", view);
+        blendingShader.setVec3("dirLight.direction", glm::vec3(-0.547f, -0.727f, 0.415f));
+        blendingShader.setVec3("dirLight.ambient", glm::vec3(0.35f));
+        blendingShader.setVec3("dirLight.diffuse", glm::vec3(0.4f));
+        blendingShader.setVec3("dirLight.specular", glm::vec3(0.2f));
+
+        // Model Sunca koji renderujemo
+        glm::mat4 model2 = glm::mat4(1.0f);
+        model2 = glm::translate(model2,
+                                glm::vec3 (50,15,10)); // translate it down so it's at the center of the scene
+        model2 = glm::scale(model2, glm::vec3(0.10,0.1,0.1));
+        model2 = glm::rotate(model2, glm::radians(-45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        // it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", model2);
+        sunModel.Draw(ourShader);
+
+        // skybox cube
 
         skyboxShader.use();
         view[3][0] = 0; // Postavljam x translaciju na nulu
@@ -315,13 +433,16 @@ int main() {
         view[3][3] = 0;
         skyboxShader.setMat4("view", view);
         skyboxShader.setMat4("projection", projection);
-// skybox cube
+
         glBindVertexArray(skyboxVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
         glDepthFunc(GL_LESS); // set depth function back to default
+
+        blendingShader.setMat4("model", model2);
+        sunModel.Draw(blendingShader);
 
         if (programState->ImGuiEnabled)
             DrawImGui(programState);

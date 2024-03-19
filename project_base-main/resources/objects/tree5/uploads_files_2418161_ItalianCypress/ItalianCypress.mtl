@@ -1,0 +1,9 @@
+# Wavefront Object Material File
+# Generated using SpeedTree tools
+
+newmtl ItalianCypress_Mat
+map_Kd ItalianCypress_Color.png
+map_bump ItalianCypress_Normal.png
+bump ItalianCypress_Normal.png -bm 1
+
+

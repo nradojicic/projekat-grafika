@@ -1,0 +1,12 @@
+newmtl Bank_of_Wooden_Mat
+d 1
+Ns 0.40000001
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 0.60000002 0.60000002 0.60000002
+Km 0.80000001
+map_Kd /Maps/Bank_of_Wooden-Diff.jpg
+map_Ks /Maps/Bank_of_Wooden-Diff.jpg
+map_Bump /Maps/Bank_of_Wooden-Bump.jpg
+

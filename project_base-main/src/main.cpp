@@ -68,6 +68,7 @@ struct ProgramState {
 
     void SaveToFile(std::string filename);
 
+
     void LoadFromFile(std::string filename);
 };
 
@@ -196,17 +197,12 @@ int main() {
     stbi_set_flip_vertically_on_load(true);
 
     stbi_set_flip_vertically_on_load(false);
-    Model bushModel("resources/objects/bush/uploads_files_3211223_SimpleBushes/SimpleBushes/SimpleBush2.obj, resources/objects/bush/uploads_files_3211223_SimpleBushes/SimpleBushes/SimpleBush3.obj, resources/objects/bush/uploads_files_3211223_SimpleBushes/SimpleBushes/SimpleBush4.obj, resources/objects/bush/uploads_files_3211223_SimpleBushes/SimpleBushes/SimpleBush5.obj, resources/objects/bush/uploads_files_3211223_SimpleBushes/SimpleBushes/SimpleBush6.obj");
-    bushModel.SetShaderTextureNamePrefix("material.");
-    stbi_set_flip_vertically_on_load(true);
-
-    stbi_set_flip_vertically_on_load(false);
     Model campFireModel("resources/objects/campfire6/fire/source/fireclean/fireclean.obj");
     campFireModel.SetShaderTextureNamePrefix("material.");
     stbi_set_flip_vertically_on_load(true);
 
     stbi_set_flip_vertically_on_load(false);
-    Model grassModel("resources/objects/grass1/grass-05/source/grass 05/grass05.obj");
+    Model grassModel("resources/objects/grass2/Grass_free_obj/free grass by adam127.obj");
     grassModel.SetShaderTextureNamePrefix("material.");
     stbi_set_flip_vertically_on_load(true);
 
@@ -255,6 +251,18 @@ int main() {
             1.0f, -1.0f,  1.0f
     };
 
+    //ovaj kod za travu sam nasao u opengl repozitorijumu 4.advanced_opengl/3.1.blending_discard
+    float transparentVertices[] = {
+            // positions         // texture Coords (swapped y coordinates because texture is flipped upside down)
+            0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
+            0.0f, -0.5f,  0.0f,  0.0f,  1.0f,
+            1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+
+            0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
+            1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+            1.0f,  0.5f,  0.0f,  1.0f,  0.0f
+    };
+
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
     pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
@@ -275,6 +283,22 @@ int main() {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
+    //transparen VAO
+    unsigned int transparentVAO, transparentVBO;
+    glGenVertexArrays(1, &transparentVAO);
+    glGenBuffers(1, &transparentVBO);
+    glBindVertexArray(transparentVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, transparentVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glBindVertexArray(0);
+
+    //load textures
+    unsigned int GrassTexture = loadTexture(FileSystem::getPath("resources/textures/grass.png").c_str());
+
     vector<std::string> faces
             {
                     FileSystem::getPath("resources/textures/skybox/Park/posx.jpg"),
@@ -285,6 +309,15 @@ int main() {
                     FileSystem::getPath("resources/textures/skybox/Park/negz.jpg")
             };
     unsigned int cubemapTexture = loadCubemap(faces);
+
+    vector<glm::vec3> vegetation
+            {
+                    glm::vec3(-1.5f, 0.0f, -0.48f),
+                    glm::vec3( 1.5f, 0.0f, 0.51f),
+                    glm::vec3( 0.0f, 0.0f, 0.7f),
+                    glm::vec3(-0.3f, 0.0f, -2.3f),
+                    glm::vec3 (0.5f, 0.0f, -0.6f)
+            };
 
     // shader configuration
     // --------------------
@@ -316,6 +349,7 @@ int main() {
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
         // don't forget to enable shader before setting uniforms
         ourShader.use();
         pointLight.position = glm::vec3(4.0 * cos(currentFrame), 4.0f, 4.0 * sin(currentFrame));
@@ -328,6 +362,23 @@ int main() {
         ourShader.setFloat("pointLight.quadratic", pointLight.quadratic);
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
+        ourShader.setBool("blinn",true);
+
+        ourShader.setVec3("spotLight.position", programState->camera.Position );
+        ourShader.setVec3("spotLight.direction", programState->camera.Front);
+        ourShader.setVec3("spotLight.ambient", 0.4f, 0.3f, 0.3f);
+        ourShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+        ourShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+        ourShader.setFloat("spotLight.constant", 1.0f);
+        ourShader.setFloat("spotLight.linear", 0.09);
+        ourShader.setFloat("spotLight.quadratic", 0.032);
+        ourShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+        ourShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
+
+        ourShader.setVec3("dirLight.direction", glm::vec3(0.0f,-1.0f,0.0f));
+        ourShader.setVec3("dirLight.ambient", glm::vec3(0.13f,0.15f,0.12f));
+        ourShader.setVec3("dirLight.diffuse", glm::vec3(0.5f,0.4f,0.4f));
+        ourShader.setVec3("dirLight.specular", glm::vec3(0.3f,0.25f,0.24f));
 
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
@@ -380,8 +431,8 @@ int main() {
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model3);
         campFireModel.Draw(ourShader);
-        /*
-        glm::mat4 model4 = glm::mat4(1.0f);
+
+        /*glm::mat4 model4 = glm::mat4(1.0f);
         model4 = glm::translate(model4,
                                 glm::vec3 (100,-15,27)); // translate it down so it's at the center of the scene
         model4 = glm::scale(model4, glm::vec3(0.5,0.5,0.5));
@@ -391,9 +442,9 @@ int main() {
 
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model4);
-        */
-         //grassModel.Draw(ourShader);
 
+         grassModel.Draw(ourShader);
+        */
         // model zbuna
 
         //glm::mat4 model5 = glm::mat4(1.0f);
@@ -403,7 +454,7 @@ int main() {
         //ourShader.setMat4("model", model5);
         //bushModel.Draw(ourShader);
 
-        //blendovanje
+        //blending
         blendingShader.use();
         blendingShader.setVec3("viewPosition", programState->camera.Position);
         blendingShader.setFloat("material.shininess", 32.0f);
@@ -418,7 +469,7 @@ int main() {
         glm::mat4 model2 = glm::mat4(1.0f);
         model2 = glm::translate(model2,
                                 glm::vec3 (50,15,10)); // translate it down so it's at the center of the scene
-        model2 = glm::scale(model2, glm::vec3(0.10,0.1,0.1));
+        model2 = glm::scale(model2, glm::vec3(0.1,0.1,0.1));
         model2 = glm::rotate(model2, glm::radians(-45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model2);
@@ -441,11 +492,26 @@ int main() {
         glBindVertexArray(0);
         glDepthFunc(GL_LESS); // set depth function back to default
 
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, GrassTexture);
+
         blendingShader.setMat4("model", model2);
         sunModel.Draw(blendingShader);
 
+        glBindVertexArray(transparentVAO);
+        glBindTexture(GL_TEXTURE_2D, GrassTexture);
+        for (unsigned int i = 0; i < vegetation.size(); i++)
+        {
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, vegetation[i]);
+            shader.setMat4("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
+
+
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -512,6 +578,44 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     programState->camera.ProcessMouseScroll(yoffset);
 }
+
+unsigned int loadTexture(char const * path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
+
+    return textureID;
+}
+
 unsigned int loadCubemap(vector<std::string> faces)
 {
     unsigned int textureID;

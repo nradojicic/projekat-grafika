@@ -43,6 +43,7 @@ bool firstMouse = true;
 // timing
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+bool blinn = false;
 
 struct PointLight {
     glm::vec3 position;
@@ -120,7 +121,7 @@ int main() {
 
     // glfw window creation
     // --------------------
-    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Parkic", NULL, NULL);
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -179,6 +180,7 @@ int main() {
     Shader shader("resources/shaders/cubemaps.vs", "resources/shaders/cubemaps.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
     Shader blendingShader("resources/shaders/2.model_lighting.vs", "resources/shaders/blending.fs" );
+    Shader BlinnPhongshader("resources/shaders/1.advanced_lighting.vs", "resources/shaders/1.advanced_lighting.fs");
     // load models
     // -----------
 
@@ -205,6 +207,34 @@ int main() {
     Model grassModel("resources/objects/grass2/Grass_free_obj/free grass by adam127.obj");
     grassModel.SetShaderTextureNamePrefix("material.");
     stbi_set_flip_vertically_on_load(true);
+
+
+    float planeVertices[] = {
+            // positions            // normals         // texcoords
+            20.0f, -0.5f, -20.0f,  0.0f, 1.0f, 0.0f,  20.0f, 20.0f, // Vertex 6
+            -20.0f, -0.5f, -20.0f,  0.0f, 1.0f, 0.0f,   0.0f, 20.0f, // Vertex 5
+            20.0f, -0.5f,  20.0f,  0.0f, 1.0f, 0.0f,  20.0f,  0.0f, // Vertex 4
+
+            -20.0f, -0.5f, -20.0f,  0.0f, 1.0f, 0.0f,   0.0f, 20.0f, // Vertex 3
+            -20.0f, -0.5f,  20.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f, // Vertex 2
+            20.0f, -0.5f,  20.0f,  0.0f, 1.0f, 0.0f,  20.0f,  0.0f  // Vertex 1
+    };
+    float angleInDegrees = 90.0f;
+
+
+    float angleInRadians = glm::radians(angleInDegrees);
+
+// Kreiranje rotacione matrice oko Y ose za dati ugao
+    glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), angleInRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+
+// Rotiranje svaki verteks plana pomoću rotacione matrice
+    for (int i = 0; i < sizeof(planeVertices) / sizeof(float); i += 8) {
+        glm::vec4 vertex(planeVertices[i], planeVertices[i + 1], planeVertices[i + 2], 1.0f);
+        vertex = rotationMatrix * vertex;
+        planeVertices[i] = vertex.x;
+        planeVertices[i + 1] = vertex.y;
+        planeVertices[i + 2] = vertex.z;
+    }
 
     float skyboxVertices[] = {
             // positions
@@ -296,8 +326,24 @@ int main() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glBindVertexArray(0);
 
+    // plane VAO
+    unsigned int planeVAO, planeVBO;
+    glGenVertexArrays(1, &planeVAO);
+    glGenBuffers(1, &planeVBO);
+    glBindVertexArray(planeVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), planeVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glBindVertexArray(0);
+
     //load textures
     unsigned int GrassTexture = loadTexture(FileSystem::getPath("resources/textures/grass.png").c_str());
+    unsigned int floorTexture = loadTexture(FileSystem::getPath("resources/textures/classic-green-grass-seamless-texture-free-photo.png").c_str());
 
     vector<std::string> faces
             {
@@ -327,9 +373,12 @@ int main() {
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
 
+    BlinnPhongshader.use();
+    BlinnPhongshader.setInt("blinn-phong", 0);
+
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
+    glm::vec3 lightPos(0.0f, 10.0f, 0.0f);
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)) {
@@ -352,8 +401,8 @@ int main() {
 
         // don't forget to enable shader before setting uniforms
         ourShader.use();
-        pointLight.position = glm::vec3(4.0 * cos(currentFrame), 4.0f, 4.0 * sin(currentFrame));
-        ourShader.setVec3("pointLight.position", pointLight.position);
+        // Postavite pointLight.position na poziciju kamere
+        ourShader.setVec3("pointLight.position", programState->camera.Position);
         ourShader.setVec3("pointLight.ambient", pointLight.ambient);
         ourShader.setVec3("pointLight.diffuse", pointLight.diffuse);
         ourShader.setVec3("pointLight.specular", pointLight.specular);
@@ -376,9 +425,9 @@ int main() {
         ourShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 
         ourShader.setVec3("dirLight.direction", glm::vec3(0.0f,-1.0f,0.0f));
-        ourShader.setVec3("dirLight.ambient", glm::vec3(0.13f,0.15f,0.12f));
-        ourShader.setVec3("dirLight.diffuse", glm::vec3(0.5f,0.4f,0.4f));
-        ourShader.setVec3("dirLight.specular", glm::vec3(0.3f,0.25f,0.24f));
+        ourShader.setVec3("dirLight.ambient", glm::vec3(1.0f,1.0f,1.0f));
+        ourShader.setVec3("dirLight.diffuse", glm::vec3(0.8f,0.8f,0.8f));
+        ourShader.setVec3("dirLight.specular", glm::vec3(1.0f,1.0f,1.0f));
 
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
@@ -387,23 +436,22 @@ int main() {
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
 
-        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
 
         // render the bench model
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model,
-                               glm::vec3 (50,-11,10)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(0.05,0.05,0.05));
-        model = glm::rotate(model, glm::radians(-45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                               glm::vec3 (3,-0.48,1)); // translate it down so it's at the center of the scene
+        model = glm::scale(model, glm::vec3(0.005,0.005,0.005));
+        model = glm::rotate(model, glm::radians(-20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model);
         ourModel.Draw(ourShader);
         // render another bench model
         glm::mat4 model0 = glm::mat4(1.0f);
         model0 = glm::translate(model0,
-                               glm::vec3 (80,-10,32)); // translate it down so it's at the center of the scene
-        model0 = glm::scale(model0, glm::vec3(0.05,0.05,0.05));
-        model0 = glm::rotate(model0, glm::radians(-40.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                               glm::vec3 (5.750,-0.48,1.975)); // translate it down so it's at the center of the scene
+        model0 = glm::scale(model0, glm::vec3(0.005,0.005,0.005));
+        model0 = glm::rotate(model0, glm::radians(-20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model0);
         ourModel.Draw(ourShader);
@@ -412,8 +460,8 @@ int main() {
 
         glm::mat4 model1 = glm::mat4(1.0f);
         model1 = glm::translate(model1,
-                                glm::vec3 (63,-10,17)); // translate it down so it's at the center of the scene
-        model1 = glm::scale(model1, glm::vec3(1,1,1));
+                                glm::vec3 (3,-0.43,3)); // translate it down so it's at the center of the scene
+        model1 = glm::scale(model1, glm::vec3(0.25,0.2,0.25));
         model1 = glm::rotate(model1, glm::radians(-45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model1);
@@ -423,11 +471,11 @@ int main() {
 
         glm::mat4 model3 = glm::mat4(1.0f);
         model3 = glm::translate(model3,
-                                glm::vec3 (100,-15,27)); // translate it down so it's at the center of the scene
-        model3 = glm::scale(model3, glm::vec3(5,5,5));
-        model3 = glm::rotate(model3, glm::radians(13.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        model3 = glm::rotate(model3, glm::radians(-7.6f), glm::vec3(1.0f, 0.0f, 0.0f));
-        model3 = glm::rotate(model3, glm::radians(-10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                                glm::vec3 (4,-0.094,2)); // translate it down so it's at the center of the scene
+        model3 = glm::scale(model3, glm::vec3(0.5,0.5,0.5));
+        model3 = glm::rotate(model3, glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        model3 = glm::rotate(model3, glm::radians(-5.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        model3 = glm::rotate(model3, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model3);
         campFireModel.Draw(ourShader);
@@ -465,16 +513,52 @@ int main() {
         blendingShader.setVec3("dirLight.diffuse", glm::vec3(0.4f));
         blendingShader.setVec3("dirLight.specular", glm::vec3(0.2f));
 
+
         // Model Sunca koji renderujemo
         glm::mat4 model2 = glm::mat4(1.0f);
-        model2 = glm::translate(model2,
-                                glm::vec3 (50,15,10)); // translate it down so it's at the center of the scene
-        model2 = glm::scale(model2, glm::vec3(0.1,0.1,0.1));
+        model2 = glm::translate(model2, glm::vec3(10, 25, -10)); // translate it down so it's at the center of the scene
         model2 = glm::rotate(model2, glm::radians(-45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+        // Postavljanje veće osi rotacije
+        glm::vec3 rotationCenter = glm::vec3(-6.57f, 10.0f, 10.0f); // Postavite centar rotacije na željenu točku
+        glm::mat4 translateToOrigin = glm::translate(glm::mat4(1.0f), -rotationCenter);
+
+        // Promjena rotacijske osi na veću os
+        glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), (float)currentFrame / 3, glm::vec3(0.0f, 0.0f, 1.0f));
+
+        // Rotacija sunca oko svoje osi
+        glm::mat4 selfRotationMatrix = glm::rotate(glm::mat4(1.0f), (float)currentFrame / 1000, glm::vec3(0.0f, 1.0f, 0.0f));
+
+        // Uvećavanje faktora skaliranja
+        glm::vec3 scaleVector = glm::vec3(5.0f); // Promijenite faktor skaliranja prema potrebi
+        glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scaleVector);
+
+        // Ponovno postavljanje centra rotacije
+        glm::mat4 translateBack = glm::translate(glm::mat4(1.0f), rotationCenter);
+
+        // Kombinacija transformacija
+        model2 = translateBack * scaleMatrix * selfRotationMatrix * rotationMatrix * translateToOrigin;
+
+        model2 = glm::scale(model2, glm::vec3(0.05,0.05,0.05));
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model2);
         sunModel.Draw(ourShader);
 
+        BlinnPhongshader.use();
+
+        BlinnPhongshader.setMat4("projection", projection);
+        BlinnPhongshader.setMat4("view", view);
+        // set light uniforms
+        BlinnPhongshader.setVec3("viewPos", programState->camera.Position);
+        BlinnPhongshader.setVec3("lightPos", lightPos);
+        BlinnPhongshader.setInt("blinn", blinn);
+        // floor
+        glBindVertexArray(planeVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, floorTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
         // skybox cube
 
         skyboxShader.use();
@@ -518,6 +602,9 @@ int main() {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    glDeleteVertexArrays(1, &planeVAO);
+    glDeleteBuffers(1, &planeVBO);
 
     programState->SaveToFile("resources/program_state.txt");
     delete programState;

@@ -28,11 +28,14 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
 unsigned int loadTexture(const char *path);
 
+void renderWall();
+
 unsigned int loadCubemap(vector<std::string> faces);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+float heightScale = 0.1;
 
 // camera
 
@@ -177,10 +180,12 @@ int main() {
     // build and compile shaders
     // -------------------------
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
+    Shader wallShader("resources/shaders/wall.vs", "resources/shaders/wall.fs");
     Shader shader("resources/shaders/cubemaps.vs", "resources/shaders/cubemaps.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
     Shader blendingShader("resources/shaders/2.model_lighting.vs", "resources/shaders/blending.fs" );
     Shader BlinnPhongshader("resources/shaders/1.advanced_lighting.vs", "resources/shaders/1.advanced_lighting.fs");
+    Shader travaShader("resources/shaders/3.1.blending.vs","resources/shaders/3.1.blending.fs");
     // load models
     // -----------
 
@@ -208,6 +213,19 @@ int main() {
     grassModel.SetShaderTextureNamePrefix("material.");
     stbi_set_flip_vertically_on_load(true);
 
+    stbi_set_flip_vertically_on_load(false);
+    Model ogradaModel("resources/objects/fence2/source/obj/fence_02.obj");
+    grassModel.SetShaderTextureNamePrefix("material.");
+    stbi_set_flip_vertically_on_load(true);
+
+    stbi_set_flip_vertically_on_load(false);
+    Model ogradaModelZica("resources/objects/wire_fence_and_door_set/scene.gltf");
+    grassModel.SetShaderTextureNamePrefix("material.");
+    stbi_set_flip_vertically_on_load(true);
+
+    unsigned int diffuseMap = loadTexture(FileSystem::getPath("resources/textures/bricks2.jpg").c_str());
+    unsigned int normalMap  = loadTexture(FileSystem::getPath("resources/textures/bricks2_normal.jpg").c_str());
+    unsigned int heightMap  = loadTexture(FileSystem::getPath("resources/textures/bricks2_disp.jpg").c_str());
 
     float planeVertices[] = {
             // positions            // normals         // texcoords
@@ -218,6 +236,17 @@ int main() {
             -20.0f, -0.5f, -20.0f,  0.0f, 1.0f, 0.0f,   0.0f, 20.0f, // Vertex 3
             -20.0f, -0.5f,  20.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f, // Vertex 2
             20.0f, -0.5f,  20.0f,  0.0f, 1.0f, 0.0f,  20.0f,  0.0f  // Vertex 1
+    };
+    float sideVertices[] = {
+            // positions            // normals         // texcoords
+
+            // Desni zid
+            20.0f, -4.0f, -20.0f,  1.0f, 0.0f, 0.0f,  0.0f,  0.0f,
+            20.0f, -4.0f,  20.0f,  1.0f, 0.0f, 0.0f,  20.0f, 0.0f,
+            20.0f,  4.0f,  20.0f,  1.0f, 0.0f, 0.0f,  20.0f, 1.0f,
+            20.0f, -4.0f, -20.0f,  1.0f, 0.0f, 0.0f,  0.0f,  0.0f,
+            20.0f,  4.0f,  20.0f,  1.0f, 0.0f, 0.0f,  20.0f, 1.0f,
+            20.0f,  4.0f, -20.0f,  1.0f, 0.0f, 0.0f,  0.0f,  1.0f,
     };
     float angleInDegrees = 90.0f;
 
@@ -290,7 +319,10 @@ int main() {
 
             0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
             1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
-            1.0f,  0.5f,  0.0f,  1.0f,  0.0f
+            1.0f,  0.5f,  0.0f,  1.0f,  0.0f,
+            2.0f,  0.5f,  0.0f,  1.0f,  0.0f,
+            3.0f,  0.5f,  0.0f,  1.0f,  0.0f,
+            4.0f,  0.5f,  0.0f,  1.0f,  0.0f
     };
 
     PointLight& pointLight = programState->pointLight;
@@ -340,9 +372,25 @@ int main() {
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     glBindVertexArray(0);
+    // side VAO
+    unsigned int sideVAO, sideVBO;
+    glGenVertexArrays(1, &sideVAO);
+    glGenBuffers(1, &sideVBO);
+    glBindVertexArray(sideVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, sideVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(sideVertices), sideVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glBindVertexArray(0);
 
     //load textures
+    stbi_set_flip_vertically_on_load(false);
     unsigned int GrassTexture = loadTexture(FileSystem::getPath("resources/textures/grass.png").c_str());
+    stbi_set_flip_vertically_on_load(true);
     unsigned int floorTexture = loadTexture(FileSystem::getPath("resources/textures/classic-green-grass-seamless-texture-free-photo.png").c_str());
 
     vector<std::string> faces
@@ -362,7 +410,13 @@ int main() {
                     glm::vec3( 1.5f, 0.0f, 0.51f),
                     glm::vec3( 0.0f, 0.0f, 0.7f),
                     glm::vec3(-0.3f, 0.0f, -2.3f),
-                    glm::vec3 (0.5f, 0.0f, -0.6f)
+                    glm::vec3 (0.5f, 0.0f, -0.6f),
+                    glm::vec3(2,0,3),
+                    glm::vec3(2,0,4),
+                    glm::vec3(2,0,2),
+                    glm::vec3(2,0,0),
+
+
             };
 
     // shader configuration
@@ -375,6 +429,11 @@ int main() {
 
     BlinnPhongshader.use();
     BlinnPhongshader.setInt("blinn-phong", 0);
+
+    wallShader.use();
+    wallShader.setInt("diffuseMap", 0);
+    wallShader.setInt("normalMap", 1);
+    wallShader.setInt("depthMap", 2);
 
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -395,7 +454,7 @@ int main() {
 
         // render
         // ------
-        glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
@@ -449,7 +508,7 @@ int main() {
         // render another bench model
         glm::mat4 model0 = glm::mat4(1.0f);
         model0 = glm::translate(model0,
-                               glm::vec3 (5.750,-0.48,1.975)); // translate it down so it's at the center of the scene
+                                glm::vec3 (5.750,-0.48,1.975)); // translate it down so it's at the center of the scene
         model0 = glm::scale(model0, glm::vec3(0.005,0.005,0.005));
         model0 = glm::rotate(model0, glm::radians(-20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         // it's a bit too big for our scene, so scale it down
@@ -480,27 +539,48 @@ int main() {
         ourShader.setMat4("model", model3);
         campFireModel.Draw(ourShader);
 
-        /*glm::mat4 model4 = glm::mat4(1.0f);
-        model4 = glm::translate(model4,
-                                glm::vec3 (100,-15,27)); // translate it down so it's at the center of the scene
-        model4 = glm::scale(model4, glm::vec3(0.5,0.5,0.5));
-        model4 = glm::rotate(model4, glm::radians(13.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        model4 = glm::rotate(model4, glm::radians(-7.6f), glm::vec3(1.0f, 0.0f, 0.0f));
-        model4 = glm::rotate(model4, glm::radians(-10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        //Model ograde koji renderujemo
+
+        glm::mat4 modelOgrada = glm::mat4(1.0f);
+        modelOgrada = glm::translate(model3,
+                                     glm::vec3 (30.5,6,-30)); // translate it down so it's at the center of the scene
+        modelOgrada = glm::scale(modelOgrada, glm::vec3(3.5,2.5,2.5));
 
         // it's a bit too big for our scene, so scale it down
-        ourShader.setMat4("model", model4);
+        ourShader.setMat4("model", modelOgrada);
+        ogradaModel.Draw(ourShader);
 
-         grassModel.Draw(ourShader);
-        */
-        // model zbuna
+        //Model ograde koji renderujemo
 
-        //glm::mat4 model5 = glm::mat4(1.0f);
-        //model5 = glm::translate(model5,
-          //                      glm::vec3 (100,-15,27)); // translate it down so it's at the center of the scene
-        //model5 = glm::scale(model5, glm::vec3(5,5,5));
-        //ourShader.setMat4("model", model5);
-        //bushModel.Draw(ourShader);
+        glm::mat4 modelOgrada1 = glm::mat4(1.0f);
+        modelOgrada1 = glm::translate(model3,
+                                     glm::vec3 (-23.3,0.7,30.6)); // translate it down so it's at the center of the scene
+        modelOgrada1 = glm::scale(modelOgrada1, glm::vec3(3.5,2.5,3.5));
+        modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-170.0f), glm::vec3(1.0f, 0.0f, 1.0f));
+        modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-270.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 1.0f));
+        modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-20.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        //modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-5.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+        // it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", modelOgrada1);
+        ogradaModel.Draw(ourShader);
+
+        //zicana ograda
+        glm::mat4 modelOgrada2 = glm::mat4(1.0f);
+        modelOgrada2 = glm::translate(modelOgrada2,
+                                      glm::vec3 (-8.50,1.4,18.0)); // translate it down so it's at the center of the scene
+        modelOgrada2 = glm::scale(modelOgrada2, glm::vec3(13.5,1.6,1.5));
+        modelOgrada2 = glm::rotate(modelOgrada2,glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        modelOgrada2 = glm::rotate(modelOgrada2,glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        //modelOgrada2 = glm::translate(modelOgrada2,
+                //                      glm::vec3 (3.0,2.0,18.0));
+
+        //modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-5.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+        // it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", modelOgrada2);
+        ogradaModelZica.Draw(ourShader);
 
         //blending
         blendingShader.use();
@@ -557,10 +637,48 @@ int main() {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, floorTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
-
+        //zid
+        /*
+        glBindVertexArray(sideVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, floorTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-        // skybox cube
+        */
 
+        glDisable(GL_CULL_FACE);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, GrassTexture);
+        glBindVertexArray(transparentVAO);
+        glBindTexture(GL_TEXTURE_2D, GrassTexture);
+        for (unsigned int i = 0; i < vegetation.size(); i++)
+        {
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, vegetation[i]);
+            shader.setMat4("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, GrassTexture);
+
+        wallShader.use();
+        wallShader.setMat4("projection", projection);
+        wallShader.setMat4("view", view);
+        wallShader.setVec3("viewPos", programState->camera.Position);
+        model = glm::mat4(1.0f);
+        wallShader.setMat4("model", model);
+        wallShader.setFloat("height_scale", heightScale);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffuseMap);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, normalMap);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, heightMap);
+
+        renderWall();
+        glDisable(GL_CULL_FACE);
+
+        //poslednji skybox
         skyboxShader.use();
         view[3][0] = 0; // Postavljam x translaciju na nulu
         view[3][1] = 0; // Postavljam y translaciju na nulu
@@ -576,21 +694,10 @@ int main() {
         glBindVertexArray(0);
         glDepthFunc(GL_LESS); // set depth function back to default
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, GrassTexture);
 
         blendingShader.setMat4("model", model2);
         sunModel.Draw(blendingShader);
 
-        glBindVertexArray(transparentVAO);
-        glBindTexture(GL_TEXTURE_2D, GrassTexture);
-        for (unsigned int i = 0; i < vegetation.size(); i++)
-        {
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, vegetation[i]);
-            shader.setMat4("model", model);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
 
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
@@ -605,6 +712,8 @@ int main() {
 
     glDeleteVertexArrays(1, &planeVAO);
     glDeleteBuffers(1, &planeVBO);
+    glDeleteVertexArrays(1, &sideVAO);
+    glDeleteBuffers(1, &sideVBO);
 
     programState->SaveToFile("resources/program_state.txt");
     delete programState;
@@ -631,6 +740,8 @@ void processInput(GLFWwindow *window) {
         programState->camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(RIGHT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
+        blinn=!blinn;
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -639,6 +750,106 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+}
+
+unsigned int wallVAO = 0;
+unsigned int wallVBO;
+
+void renderWall() {
+    GLuint wallVAO = 0;
+    GLuint wallVBO = 0;
+
+    if (wallVAO == 0) {
+        glm::vec3 pos1(20.0f, -4.0f, -20.0f);
+        glm::vec3 pos2(20.0f, -4.0f,  20.0f);
+        glm::vec3 pos3(20.0f,  4.0f,  20.0f);
+        glm::vec3 pos4(20.0f, 4.0f, -20.0f);
+
+        glm::vec2 uv1(0.0f, 0.0f);
+        glm::vec2 uv2(20.0f, 0.0f);
+        glm::vec2 uv3(20.0f, 1.0f);
+        glm::vec2 uv4(0.0f, 0.0f);
+
+        glm::vec3 nm(0.0f, 1.0f, 0.0f);
+
+        // calculate tangent/bitangent vectors of both triangles
+        glm::vec3 tangent1, bitangent1;
+        glm::vec3 tangent2, bitangent2;
+        // triangle 1
+        // ----------
+        glm::vec3 edge1 = pos2 - pos1;
+        glm::vec3 edge2 = pos3 - pos1;
+        glm::vec2 deltaUV1 = uv2 - uv1;
+        glm::vec2 deltaUV2 = uv3 - uv1;
+
+        float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+        tangent1.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+        tangent1.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+        tangent1.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+        tangent1 = glm::normalize(tangent1);
+
+        bitangent1.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+        bitangent1.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+        bitangent1.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+        bitangent1 = glm::normalize(bitangent1);
+
+        // triangle 2
+        // ----------
+        edge1 = pos3 - pos1;
+        edge2 = pos4 - pos1;
+        deltaUV1 = uv3 - uv1;
+        deltaUV2 = uv4 - uv1;
+
+        f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+        tangent2.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+        tangent2.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+        tangent2.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+        tangent2 = glm::normalize(tangent2);
+
+
+        bitangent2.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+        bitangent2.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+        bitangent2.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+        bitangent2 = glm::normalize(bitangent2);
+
+        float wallVertices[] = {
+                // positions            // normal         // texcoords  // tangent                          // bitangent
+                pos1.x, pos1.y, pos1.z, nm.x, nm.y, nm.z, uv1.x, uv1.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
+                pos2.x, pos2.y, pos2.z, nm.x, nm.y, nm.z, uv2.x, uv2.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
+                pos3.x, pos3.y, pos3.z, nm.x, nm.y, nm.z, uv3.x, uv3.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
+
+                pos1.x, pos1.y, pos1.z, nm.x, nm.y, nm.z, uv1.x, uv1.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z,
+                pos3.x, pos3.y, pos3.z, nm.x, nm.y, nm.z, uv3.x, uv3.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z,
+                pos4.x, pos4.y, pos4.z, nm.x, nm.y, nm.z, uv4.x, uv4.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z
+        };
+        glGenVertexArrays(1, &wallVAO);
+        glGenBuffers(1, &wallVBO);
+
+        glBindVertexArray(wallVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, wallVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(wallVertices), &wallVertices, GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)0);
+
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(3 * sizeof(float)));
+
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(6 * sizeof(float)));
+
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(8 * sizeof(float)));
+
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(11 * sizeof(float)));
+    }
+
+    glBindVertexArray(wallVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
 }
 
 // glfw: whenever the mouse moves, this callback is called
@@ -656,7 +867,7 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
     lastX = xpos;
     lastY = ypos;
 
-    if (programState->CameraMouseMovementUpdateEnabled)
+    if (programState->ImGuiEnabled)
         programState->camera.ProcessMouseMovement(xoffset, yoffset);
 }
 

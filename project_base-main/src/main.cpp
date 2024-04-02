@@ -180,7 +180,7 @@ int main() {
     // build and compile shaders
     // -------------------------
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
-    Shader wallShader("resources/shaders/wall.vs", "resources/shaders/wall.fs");
+    //Shader wallShader("resources/shaders/wall.vs", "resources/shaders/wall.fs");
     Shader shader("resources/shaders/cubemaps.vs", "resources/shaders/cubemaps.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
     Shader blendingShader("resources/shaders/2.model_lighting.vs", "resources/shaders/blending.fs" );
@@ -198,35 +198,33 @@ int main() {
     Model sunModel("resources/objects/sunce/Sun.obj");
     sunModel.SetShaderTextureNamePrefix("material.");
 
-    stbi_set_flip_vertically_on_load(false);
-    Model treeModel("resources/objects/tree5/uploads_files_2418161_ItalianCypress/ItalianCypress.obj");
-    treeModel.SetShaderTextureNamePrefix("material.");
-    stbi_set_flip_vertically_on_load(true);
 
     stbi_set_flip_vertically_on_load(false);
-    Model campFireModel("resources/objects/campfire6/fire/source/fireclean/fireclean.obj");
+    Model campFireModel("resources/objects/park1/uploads_files_3749963_tree.obj");
     campFireModel.SetShaderTextureNamePrefix("material.");
     stbi_set_flip_vertically_on_load(true);
 
+    /*
     stbi_set_flip_vertically_on_load(false);
-    Model grassModel("resources/objects/grass2/Grass_free_obj/free grass by adam127.obj");
+    Model grassModel("resources/objects/seesaw/uploads_files_4642818_SeeSaw/Obj/SeaSaw.obj");
     grassModel.SetShaderTextureNamePrefix("material.");
     stbi_set_flip_vertically_on_load(true);
+    */
 
-    stbi_set_flip_vertically_on_load(false);
-    Model ogradaModel("resources/objects/fence2/source/obj/fence_02.obj");
-    grassModel.SetShaderTextureNamePrefix("material.");
-    stbi_set_flip_vertically_on_load(true);
+    Model swingModel("resources/objects/ljuljaska/uploads_files_4642825_Swing/Obj/Swing.obj");
+    swingModel.SetShaderTextureNamePrefix("material.");
 
-    stbi_set_flip_vertically_on_load(false);
-    Model ogradaModelZica("resources/objects/wire_fence_and_door_set/scene.gltf");
-    grassModel.SetShaderTextureNamePrefix("material.");
-    stbi_set_flip_vertically_on_load(true);
+    Model ogradaModelZica("resources/objects/seesaw2/untitled.obj");
+    ogradaModelZica.SetShaderTextureNamePrefix("material.");
 
+    Model treeModel("resources/objects/tree5/uploads_files_2418161_ItalianCypress/ItalianCypress.obj");
+    treeModel.SetShaderTextureNamePrefix("material.");
+
+    /*
     unsigned int diffuseMap = loadTexture(FileSystem::getPath("resources/textures/bricks2.jpg").c_str());
     unsigned int normalMap  = loadTexture(FileSystem::getPath("resources/textures/bricks2_normal.jpg").c_str());
     unsigned int heightMap  = loadTexture(FileSystem::getPath("resources/textures/bricks2_disp.jpg").c_str());
-
+    */
     float planeVertices[] = {
             // positions            // normals         // texcoords
             20.0f, -0.5f, -20.0f,  0.0f, 1.0f, 0.0f,  20.0f, 20.0f, // Vertex 6
@@ -373,6 +371,7 @@ int main() {
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     glBindVertexArray(0);
     // side VAO
+
     unsigned int sideVAO, sideVBO;
     glGenVertexArrays(1, &sideVAO);
     glGenBuffers(1, &sideVBO);
@@ -430,11 +429,12 @@ int main() {
     BlinnPhongshader.use();
     BlinnPhongshader.setInt("blinn-phong", 0);
 
+    /*
     wallShader.use();
     wallShader.setInt("diffuseMap", 0);
     wallShader.setInt("normalMap", 1);
     wallShader.setInt("depthMap", 2);
-
+    */
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glm::vec3 lightPos(0.0f, 10.0f, 0.0f);
@@ -505,6 +505,7 @@ int main() {
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model);
         ourModel.Draw(ourShader);
+
         // render another bench model
         glm::mat4 model0 = glm::mat4(1.0f);
         model0 = glm::translate(model0,
@@ -528,59 +529,59 @@ int main() {
 
         //Model logorske vatre koji renderujemo
 
+
         glm::mat4 model3 = glm::mat4(1.0f);
         model3 = glm::translate(model3,
-                                glm::vec3 (4,-0.094,2)); // translate it down so it's at the center of the scene
+                                glm::vec3 (4,-0.55,2)); // translate it down so it's at the center of the scene
         model3 = glm::scale(model3, glm::vec3(0.5,0.5,0.5));
-        model3 = glm::rotate(model3, glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        model3 = glm::rotate(model3, glm::radians(-5.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        model3 = glm::rotate(model3, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        //model3 = glm::rotate(model3, glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        //model3 = glm::rotate(model3, glm::radians(-5.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        //model3 = glm::rotate(model3, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model3);
         campFireModel.Draw(ourShader);
 
         //Model ograde koji renderujemo
 
+        /*
         glm::mat4 modelOgrada = glm::mat4(1.0f);
-        modelOgrada = glm::translate(model3,
+        modelOgrada = glm::translate(modelOgrada,
                                      glm::vec3 (30.5,6,-30)); // translate it down so it's at the center of the scene
-        modelOgrada = glm::scale(modelOgrada, glm::vec3(3.5,2.5,2.5));
+        modelOgrada = glm::scale(modelOgrada, glm::vec3(0.5,0.5,0.5));
 
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", modelOgrada);
         ogradaModel.Draw(ourShader);
-
+        */
         //Model ograde koji renderujemo
 
-        glm::mat4 modelOgrada1 = glm::mat4(1.0f);
-        modelOgrada1 = glm::translate(model3,
-                                     glm::vec3 (-23.3,0.7,30.6)); // translate it down so it's at the center of the scene
-        modelOgrada1 = glm::scale(modelOgrada1, glm::vec3(3.5,2.5,3.5));
-        modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-170.0f), glm::vec3(1.0f, 0.0f, 1.0f));
-        modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-270.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 1.0f));
-        modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-20.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        //modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-5.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-        // it's a bit too big for our scene, so scale it down
-        ourShader.setMat4("model", modelOgrada1);
-        ogradaModel.Draw(ourShader);
-
-        //zicana ograda
+        //klackalica
         glm::mat4 modelOgrada2 = glm::mat4(1.0f);
         modelOgrada2 = glm::translate(modelOgrada2,
-                                      glm::vec3 (-8.50,1.4,18.0)); // translate it down so it's at the center of the scene
-        modelOgrada2 = glm::scale(modelOgrada2, glm::vec3(13.5,1.6,1.5));
-        modelOgrada2 = glm::rotate(modelOgrada2,glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        modelOgrada2 = glm::rotate(modelOgrada2,glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                                      glm::vec3 (-2.50,-0.45,5.0)); // translate it down so it's at the center of the scene
+        modelOgrada2 = glm::scale(modelOgrada2, glm::vec3(0.1,0.1,0.1));
+        //modelOgrada2 = glm::rotate(modelOgrada2,glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        //modelOgrada2 = glm::rotate(modelOgrada2,glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         //modelOgrada2 = glm::translate(modelOgrada2,
-                //                      glm::vec3 (3.0,2.0,18.0));
+        //                      glm::vec3 (3.0,2.0,18.0));
 
         //modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-5.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", modelOgrada2);
         ogradaModelZica.Draw(ourShader);
+
+
+        glm::mat4 modelSwing = glm::mat4(1.0f);
+        modelSwing = glm::translate(modelSwing ,
+                                     glm::vec3 (0,-0.6,0.6)); // translate it down so it's at the center of the scene
+        modelSwing  = glm::scale(modelSwing , glm::vec3(0.1,0.1,0.1));
+
+
+        // it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", modelSwing);
+        swingModel.Draw(ourShader);
+
 
         //blending
         blendingShader.use();
@@ -638,13 +639,17 @@ int main() {
         glBindTexture(GL_TEXTURE_2D, floorTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         //zid
-        /*
+
         glBindVertexArray(sideVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, floorTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-        */
+
+
+        travaShader.use();
+        travaShader.setMat4("projection", projection);
+        travaShader.setMat4("view", view);
 
         glDisable(GL_CULL_FACE);
         glActiveTexture(GL_TEXTURE0);
@@ -660,7 +665,7 @@ int main() {
         }
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, GrassTexture);
-
+        /*
         wallShader.use();
         wallShader.setMat4("projection", projection);
         wallShader.setMat4("view", view);
@@ -677,7 +682,7 @@ int main() {
 
         renderWall();
         glDisable(GL_CULL_FACE);
-
+        */
         //poslednji skybox
         skyboxShader.use();
         view[3][0] = 0; // Postavljam x translaciju na nulu
@@ -712,8 +717,9 @@ int main() {
 
     glDeleteVertexArrays(1, &planeVAO);
     glDeleteBuffers(1, &planeVBO);
-    glDeleteVertexArrays(1, &sideVAO);
-    glDeleteBuffers(1, &sideVBO);
+
+    //glDeleteVertexArrays(1, &sideVAO);
+    //glDeleteBuffers(1, &sideVBO);
 
     programState->SaveToFile("resources/program_state.txt");
     delete programState;
@@ -754,6 +760,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 
 unsigned int wallVAO = 0;
 unsigned int wallVBO;
+
 
 void renderWall() {
     GLuint wallVAO = 0;

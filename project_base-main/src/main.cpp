@@ -200,8 +200,8 @@ int main() {
 
 
     stbi_set_flip_vertically_on_load(false);
-    Model campFireModel("resources/objects/park1/uploads_files_3749963_tree.obj");
-    campFireModel.SetShaderTextureNamePrefix("material.");
+    Model drvecaModel("resources/objects/park1/uploads_files_3749963_tree.obj");
+    drvecaModel.SetShaderTextureNamePrefix("material.");
     stbi_set_flip_vertically_on_load(true);
 
     /*
@@ -211,11 +211,11 @@ int main() {
     stbi_set_flip_vertically_on_load(true);
     */
 
-    Model swingModel("resources/objects/ljuljaska/uploads_files_4642825_Swing/Obj/Swing.obj");
+    Model swingModel("resources/objects/SWING2/untitled.obj");
     swingModel.SetShaderTextureNamePrefix("material.");
 
-    Model ogradaModelZica("resources/objects/seesaw2/untitled.obj");
-    ogradaModelZica.SetShaderTextureNamePrefix("material.");
+    Model toboganModel("resources/objects/tobogan/tobogan.obj");
+    toboganModel.SetShaderTextureNamePrefix("material.");
 
     Model treeModel("resources/objects/tree5/uploads_files_2418161_ItalianCypress/ItalianCypress.obj");
     treeModel.SetShaderTextureNamePrefix("material.");
@@ -391,6 +391,7 @@ int main() {
     unsigned int GrassTexture = loadTexture(FileSystem::getPath("resources/textures/grass.png").c_str());
     stbi_set_flip_vertically_on_load(true);
     unsigned int floorTexture = loadTexture(FileSystem::getPath("resources/textures/classic-green-grass-seamless-texture-free-photo.png").c_str());
+    unsigned int sideTexture = loadTexture(FileSystem::getPath("resources/textures/bricks2.jpg").c_str());
 
     vector<std::string> faces
             {
@@ -539,27 +540,14 @@ int main() {
         //model3 = glm::rotate(model3, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model3);
-        campFireModel.Draw(ourShader);
+        drvecaModel.Draw(ourShader);
 
-        //Model ograde koji renderujemo
 
-        /*
-        glm::mat4 modelOgrada = glm::mat4(1.0f);
-        modelOgrada = glm::translate(modelOgrada,
-                                     glm::vec3 (30.5,6,-30)); // translate it down so it's at the center of the scene
-        modelOgrada = glm::scale(modelOgrada, glm::vec3(0.5,0.5,0.5));
-
-        // it's a bit too big for our scene, so scale it down
-        ourShader.setMat4("model", modelOgrada);
-        ogradaModel.Draw(ourShader);
-        */
-        //Model ograde koji renderujemo
-
-        //klackalica
-        glm::mat4 modelOgrada2 = glm::mat4(1.0f);
-        modelOgrada2 = glm::translate(modelOgrada2,
-                                      glm::vec3 (-2.50,-0.45,5.0)); // translate it down so it's at the center of the scene
-        modelOgrada2 = glm::scale(modelOgrada2, glm::vec3(0.1,0.1,0.1));
+        //tobogan
+        glm::mat4 modelTobogan = glm::mat4(1.0f);
+        modelTobogan = glm::translate(modelTobogan,
+                                      glm::vec3 (-2.50,-0.45,3.0)); // translate it down so it's at the center of the scene
+        modelTobogan = glm::scale(modelTobogan, glm::vec3(0.5,0.5,0.5));
         //modelOgrada2 = glm::rotate(modelOgrada2,glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         //modelOgrada2 = glm::rotate(modelOgrada2,glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         //modelOgrada2 = glm::translate(modelOgrada2,
@@ -568,14 +556,14 @@ int main() {
         //modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-5.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
         // it's a bit too big for our scene, so scale it down
-        ourShader.setMat4("model", modelOgrada2);
-        ogradaModelZica.Draw(ourShader);
+        ourShader.setMat4("model", modelTobogan);
+        toboganModel.Draw(ourShader);
 
 
         glm::mat4 modelSwing = glm::mat4(1.0f);
         modelSwing = glm::translate(modelSwing ,
-                                     glm::vec3 (0,-0.6,0.6)); // translate it down so it's at the center of the scene
-        modelSwing  = glm::scale(modelSwing , glm::vec3(0.1,0.1,0.1));
+                                     glm::vec3 (0,-0.6,1.2)); // translate it down so it's at the center of the scene
+        modelSwing  = glm::scale(modelSwing , glm::vec3(0.23,0.23,0.27));
 
 
         // it's a bit too big for our scene, so scale it down
@@ -642,7 +630,7 @@ int main() {
 
         glBindVertexArray(sideVAO);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, floorTexture);
+        glBindTexture(GL_TEXTURE_2D, sideTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
 

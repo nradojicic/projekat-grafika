@@ -29,7 +29,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 unsigned int loadTexture(const char *path);
 
 void renderWall();
-
+void renderQuad();
 unsigned int loadCubemap(vector<std::string> faces);
 
 // settings
@@ -47,6 +47,14 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 bool blinn = false;
+bool hdr = false;
+bool hdrKeyPressed = false;
+bool bloom = false;
+bool bloomKeyPressed = false;
+float exposure = 1.0f;
+
+
+// timing
 
 struct PointLight {
     glm::vec3 position;
@@ -186,6 +194,9 @@ int main() {
     Shader blendingShader("resources/shaders/2.model_lighting.vs", "resources/shaders/blending.fs" );
     Shader BlinnPhongshader("resources/shaders/1.advanced_lighting.vs", "resources/shaders/1.advanced_lighting.fs");
     Shader travaShader("resources/shaders/3.1.blending.vs","resources/shaders/3.1.blending.fs");
+    Shader HdrShader("resources/shaders/hdr.vs", "resources/shaders/hdr.fs");
+    Shader bloomShader("resources/shaders/bloom.vs", "resources/shaders/bloom.fs");
+    Shader blurShader("resources/shaders/blur.vs", "resources/shaders/blur.fs");
     // load models
     // -----------
 
@@ -326,12 +337,12 @@ int main() {
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
     pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
-    pointLight.diffuse = glm::vec3(1, 1, 1);
-    pointLight.specular = glm::vec3(1.0, 1.0, 1.0);
+    pointLight.diffuse = glm::vec3(0.2, 0.2, 0.2);
+    pointLight.specular = glm::vec3(0.01, 0.01, 0.01);
 
     pointLight.constant = 1.0f;
-    pointLight.linear = 0.0f;
-    pointLight.quadratic = 0.0f;
+    pointLight.linear = 0.000001f;
+    pointLight.quadratic = 0.0000001f;
 
     // skybox VAO
     unsigned int skyboxVAO, skyboxVBO;
@@ -404,6 +415,54 @@ int main() {
             };
     unsigned int cubemapTexture = loadCubemap(faces);
 
+    unsigned int hdrFBO;
+    glGenFramebuffers(1, &hdrFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+
+    unsigned int colorBuffers[2];
+    glGenTextures(2, colorBuffers);
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorBuffers[i], 0);
+    }
+
+    unsigned int rboDepth;
+    glGenRenderbuffers(1, &rboDepth);
+    glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+    unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(2, attachments);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "Framebuffer not complete!" << std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // preparing blur.
+    unsigned int pingpongFBO[2];
+    unsigned int pingpongColorbuffers[2];
+    glGenFramebuffers(2, pingpongFBO);
+    glGenTextures(2, pingpongColorbuffers);
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+        glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColorbuffers[i], 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            std::cout << "Framebuffer not complete!" << std::endl;
+    }
+
     vector<glm::vec3> vegetation
             {
                     glm::vec3(-1.5f, 0.0f, -0.48f),
@@ -427,6 +486,17 @@ int main() {
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
 
+    //HdrShader.use();
+    //HdrShader.setInt("hdrBuffer", 0);
+    //HdrShader.setInt("bloomBlur", 1);
+
+    blurShader.use();
+    blurShader.setInt("image", 0);
+
+    bloomShader.use();
+    bloomShader.setInt("scene", 0);
+    bloomShader.setInt("bloomBlur", 1);
+
     BlinnPhongshader.use();
     BlinnPhongshader.setInt("blinn-phong", 0);
 
@@ -438,7 +508,7 @@ int main() {
     */
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glm::vec3 lightPos(0.0f, 10.0f, 0.0f);
+    glm::vec3 lightPos(0.0f, 4.0f, 3.0f);
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)) {
@@ -455,7 +525,8 @@ int main() {
 
         // render
         // ------
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
+        glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
@@ -469,14 +540,16 @@ int main() {
         ourShader.setFloat("pointLight.constant", pointLight.constant);
         ourShader.setFloat("pointLight.linear", pointLight.linear);
         ourShader.setFloat("pointLight.quadratic", pointLight.quadratic);
+
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
-        ourShader.setBool("blinn",true);
+        ourShader.setVec3("material.specular", 0.0f, 0.0f, 0.0f);
+        ourShader.setBool("blinn",false);
 
         ourShader.setVec3("spotLight.position", programState->camera.Position );
         ourShader.setVec3("spotLight.direction", programState->camera.Front);
-        ourShader.setVec3("spotLight.ambient", 0.4f, 0.3f, 0.3f);
-        ourShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+        ourShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+        ourShader.setVec3("spotLight.diffuse", 0.0f, 0.0f, 0.0f);
         ourShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
         ourShader.setFloat("spotLight.constant", 1.0f);
         ourShader.setFloat("spotLight.linear", 0.09);
@@ -484,10 +557,12 @@ int main() {
         ourShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
         ourShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 
+
+        ourShader.setVec3("dirLight.position", glm::vec3(1.0,2.0,3.0));
         ourShader.setVec3("dirLight.direction", glm::vec3(0.0f,-1.0f,0.0f));
-        ourShader.setVec3("dirLight.ambient", glm::vec3(1.0f,1.0f,1.0f));
-        ourShader.setVec3("dirLight.diffuse", glm::vec3(0.8f,0.8f,0.8f));
-        ourShader.setVec3("dirLight.specular", glm::vec3(1.0f,1.0f,1.0f));
+        ourShader.setVec3("dirLight.ambient", glm::vec3(0.1f,0.1f,0.1f));
+        ourShader.setVec3("dirLight.diffuse", glm::vec3(0.1f,0.1f,0.1f));
+        ourShader.setVec3("dirLight.specular", glm::vec3(0.1f,0.1f,0.1f));
 
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
@@ -618,6 +693,7 @@ int main() {
         BlinnPhongshader.setMat4("projection", projection);
         BlinnPhongshader.setMat4("view", view);
         // set light uniforms
+
         BlinnPhongshader.setVec3("viewPos", programState->camera.Position);
         BlinnPhongshader.setVec3("lightPos", lightPos);
         BlinnPhongshader.setInt("blinn", blinn);
@@ -687,13 +763,48 @@ int main() {
         glBindVertexArray(0);
         glDepthFunc(GL_LESS); // set depth function back to default
 
+        // blur
+        bool horizontal = true, first_iteration = true;
+        unsigned int amount = 10;
+        blurShader.use();
+        for (unsigned int i = 0; i < amount; i++)
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+            blurShader.setInt("horizontal", horizontal);
+            glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);  // bind texture of other framebuffer (or scene if first iteration)
+            renderQuad();
+            horizontal = !horizontal;
+            if (first_iteration)
+                first_iteration = false;
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+        // --------------------------------------------------------------------------------------------------------------------------
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //bloomShader.use();
+        HdrShader.use();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
+        HdrShader.setBool("hdr", hdr);
+        HdrShader.setInt("bloom", bloom);
+//        bloomShader.setInt("bloom", bloom);
+//        bloomShader.setFloat("exposure", exposure);
+        HdrShader.setFloat("exposure", exposure);
+        renderQuad();
+
+        std::cout << "hdr: " << (hdr ? "on" : "off") << std::endl;
+        std::cout << "bloom: " << (bloom ? "on" : "off") << " | exposure: " << exposure << std::endl;
+
 
         blendingShader.setMat4("model", model2);
         sunModel.Draw(blendingShader);
 
 
         if (programState->ImGuiEnabled)
-            DrawImGui(programState);
+            //DrawImGui(programState);
 
 
 
@@ -734,8 +845,7 @@ void processInput(GLFWwindow *window) {
         programState->camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(RIGHT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
-        blinn=!blinn;
+
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -984,4 +1094,54 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
     }
+    if(key == GLFW_KEY_B && action == GLFW_PRESS){
+        blinn = !blinn;}
+
+    if(key == GLFW_KEY_H && action == GLFW_PRESS){
+        hdr = true;
+        hdrKeyPressed = true;
+    }
+
+    if(key==GLFW_KEY_H && action == GLFW_RELEASE){
+        hdrKeyPressed = false;
+        hdr = false;
+    }
+
+    if(key == GLFW_KEY_J && action == GLFW_PRESS){
+        bloom = true;
+        bloomKeyPressed = true;
+    }
+
+    if(key == GLFW_KEY_J && action == GLFW_RELEASE){
+        bloom = false;
+        bloomKeyPressed = false;
+    }
+}
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+{
+    if (quadVAO == 0)
+    {
+        float quadVertices[] = {
+                // positions        // texture Coords
+                -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+                -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+                1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        };
+        // setup plane VAO
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    }
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
 }

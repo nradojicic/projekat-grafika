@@ -132,7 +132,7 @@ int main() {
 
     // glfw window creation
     // --------------------
-    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Parkic", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Park", NULL, NULL);
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -623,12 +623,6 @@ int main() {
         modelTobogan = glm::translate(modelTobogan,
                                       glm::vec3 (-2.50,-0.45,3.0)); // translate it down so it's at the center of the scene
         modelTobogan = glm::scale(modelTobogan, glm::vec3(0.5,0.5,0.5));
-        //modelOgrada2 = glm::rotate(modelOgrada2,glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        //modelOgrada2 = glm::rotate(modelOgrada2,glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        //modelOgrada2 = glm::translate(modelOgrada2,
-        //                      glm::vec3 (3.0,2.0,18.0));
-
-        //modelOgrada1 = glm::rotate(modelOgrada1,glm::radians(-5.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
         // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", modelTobogan);
